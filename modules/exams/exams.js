@@ -238,55 +238,107 @@ function saveAllMarks() {
     showNotification('Marks and Status saved successfully!');
 }
 
-function viewExamAnalytics(examId) {
-    const analytics = tuitionManager.getExamAnalytics(examId);
-    if (!analytics) {
-        showNotification('No results available for this exam', 'warning');
+function viewExamAnalytics(id) {
+    const exam = db.getRecords('exams').find(e => e.id === id);
+    if (!exam || !exam.results) {
+        showNotification('No data for this exam', 'warning');
         return;
     }
 
+    const analytics = tuitionManager.getExamAnalytics(id);
+    const results = exam.results;
+    const marks = results.map(r => r.marks).sort((a, b) => b - a);
+
+    // Performance Tiers
+    const topPerformers = results.filter(r => r.marks >= exam.totalMarks * 0.9).length;
+    const averagePerformers = results.filter(r => r.marks < exam.totalMarks * 0.9 && r.marks >= exam.passingMarks).length;
+    const needsAttention = results.filter(r => r.marks < exam.passingMarks).length;
+
     const html = `
-        <div class="analytics-view">
-            <h4 style="margin-bottom: 5px;">${analytics.examName}</h4>
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Total Students Attempted: ${analytics.totalStudents}</p>
-
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
-                <div style="background: rgba(16, 185, 129, 0.1); padding: 15px; border-radius: 8px; text-align: center; border: 1px solid var(--success);">
-                    <div style="font-size: 24px; font-weight: bold; color: var(--success);">${analytics.passed}</div>
-                    <div style="font-size: 13px; font-weight: 600;">Passed</div>
+        <div class="analytics-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px;">
+                <div>
+                    <h2 style="margin: 0; color: var(--primary);">${exam.name}</h2>
+                    <p style="color: var(--text-secondary); margin-top: 4px;">${exam.subject} | Total: ${exam.totalMarks} | Pass: ${exam.passingMarks}</p>
                 </div>
-                <div style="background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 8px; text-align: center; border: 1px solid var(--danger);">
-                    <div style="font-size: 24px; font-weight: bold; color: var(--danger);">${analytics.failed}</div>
-                    <div style="font-size: 13px; font-weight: 600;">Failed</div>
+                <div style="text-align: right;">
+                    <span class="status-badge paid" style="font-size: 14px; padding: 8px 15px;">${analytics.passPercentage}% Success Rate</span>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
-                 <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; text-align: center; border: 1px solid var(--border-color);">
-                    <div style="font-weight: bold; color: var(--primary); font-size: 12px; text-transform: uppercase;">Average</div>
-                    <div style="font-size: 18px; margin-top: 5px;">${analytics.averageMarks}</div>
-                 </div>
-                 <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; text-align: center; border: 1px solid var(--border-color);">
-                    <div style="font-weight: bold; color: var(--success); font-size: 12px; text-transform: uppercase;">Highest</div>
-                    <div style="font-size: 18px; margin-top: 5px;">${analytics.highestMarks}</div>
-                 </div>
-                 <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; text-align: center; border: 1px solid var(--border-color);">
-                    <div style="font-weight: bold; color: var(--danger); font-size: 12px; text-transform: uppercase;">Lowest</div>
-                    <div style="font-size: 18px; margin-top: 5px;">${analytics.lowestMarks}</div>
-                 </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+                <div class="stat-box" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Average</div>
+                    <div style="font-size: 22px; font-weight: 800; color: var(--primary);">${analytics.averageMarks}</div>
+                </div>
+                <div class="stat-box" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Highest</div>
+                    <div style="font-size: 22px; font-weight: 800; color: var(--success);">${analytics.highestMarks}</div>
+                </div>
+                <div class="stat-box" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Passed</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #10b981;">${analytics.passed}</div>
+                </div>
+                <div class="stat-box" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Failed</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #ef4444;">${analytics.failed}</div>
+                </div>
             </div>
 
-            <div style="text-align: center;">
-                <div style="width: 100%; height: 10px; background: var(--bg-secondary); border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
-                    <div style="width: ${analytics.passPercentage}%; height: 100%; background: var(--success);"></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 20px;">
+                <div class="card" style="margin-bottom: 0;">
+                    <h4 style="margin-bottom: 15px; font-size: 14px; text-transform: uppercase; color: var(--text-secondary);">Score Distribution</h4>
+                    <div style="height: 250px;">
+                        <canvas id="examDistributionChart"></canvas>
+                    </div>
                 </div>
-                <p style="font-size: 13px; font-weight: 500;">Pass Percentage: <span style="color: var(--success);">${analytics.passPercentage}%</span></p>
+                <div class="card" style="margin-bottom: 0;">
+                    <h4 style="margin-bottom: 15px; font-size: 14px; text-transform: uppercase; color: var(--text-secondary);">Student Tiers</h4>
+                    <div style="height: 250px;">
+                        <canvas id="examTiersChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     `;
 
     document.getElementById('examAnalyticsContent').innerHTML = html;
     openModal('examAnalyticsModal');
+
+    // Render Charts
+    setTimeout(() => {
+        const ctxDist = document.getElementById('examDistributionChart');
+        const ctxTiers = document.getElementById('examTiersChart');
+
+        new Chart(ctxDist, {
+            type: 'bar',
+            data: {
+                labels: results.slice(0, 5).map((r, i) => `Top ${i + 1}`),
+                datasets: [{
+                    label: 'Score',
+                    data: marks.slice(0, 5),
+                    backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                    borderColor: 'var(--primary)',
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        new Chart(ctxTiers, {
+            type: 'doughnut',
+            data: {
+                labels: ['Top (>90%)', 'Pass', 'Fail'],
+                datasets: [{
+                    data: [topPerformers, averagePerformers, needsAttention],
+                    backgroundColor: ['#10b981', '#6366f1', '#ef4444'],
+                    hoverOffset: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }, 300);
 }
 
 function filterExams() {

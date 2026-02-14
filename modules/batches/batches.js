@@ -9,7 +9,7 @@ function loadBatches() {
         return;
     }
 
-    let html = '<table><thead><tr><th>Batch Code</th><th>Name</th><th>Subject</th><th>Schedule</th><th>Students</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Code</th><th>Batch Details</th><th>Subject</th><th>Schedule</th><th>Students</th><th>Actions</th></tr></thead><tbody>';
 
     batches.forEach(batch => {
         const studentCount = students.filter(s => (s.batches && s.batches.includes(batch.name)) || s.batch === batch.name).length;
@@ -21,20 +21,19 @@ function loadBatches() {
 
         html += `
             <tr>
-                <td><strong>${batch.batch_code || '-'}</strong></td>
+                <td><span class="status-badge" style="background: var(--bg-primary); color: var(--primary); font-family: monospace;">${batch.batch_code || batch.batchCode || 'N/A'}</span></td>
                 <td>
-                    <div style="font-weight: 600;">${batch.name}</div>
-                    <div style="font-size: 11px; color: var(--text-secondary);">Tutor: ${batch.tutor || 'Unassigned'}</div>
+                    <div style="font-weight: 600; color: var(--primary);">${batch.name}</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">Year: ${batch.year || '2026-27'} | Tutor: ${batch.tutor || 'Unassigned'}</div>
                 </td>
-                <td>${batch.subject || '-'}</td>
-                <td>${batch.schedule || '-'}</td>
-                <td>
+                <td><span style="font-weight: 500;">${batch.subject || '-'}</span></td>
+                <td style="font-size: 13px;">${batch.schedule || '-'}</td>
+                <td style="min-width: 100px;">
                     <div class="progress-bar-mini" title="${studentCount}/${capacity} Students">
                          <div class="progress-fill ${fillClass}" style="width: ${Math.min(100, fillPercentage)}%"></div>
                     </div>
-                    <div style="font-size: 11px; text-align: center; margin-top: 2px;">${studentCount}/${capacity}</div>
+                    <div style="font-size: 11px; text-align: center; margin-top: 2px; font-weight: 600;">${studentCount}/${capacity}</div>
                 </td>
-                <td><span class="status-badge active">Active</span></td>
                 <td>
                     <div class="row-actions">
                         <button class="btn btn-secondary btn-small" onclick="openBatchModal('${batch.id}')" title="Edit"><i class="fas fa-edit"></i></button>
@@ -101,6 +100,7 @@ function openBatchModal(batchId = null) {
         const batch = db.getRecords('batches').find(b => b.id === batchId);
         if (batch) {
             document.getElementById('batchName').value = batch.name || '';
+            document.getElementById('batchCode').value = batch.batch_code || batch.batchCode || '';
             document.getElementById('batchSubject').value = batch.subject || '';
             document.getElementById('batchYear').value = batch.year || '';
             document.getElementById('batchTutors').value = batch.tutor || '';
@@ -125,6 +125,7 @@ function saveBatch(e) {
 
     const batchData = {
         name: document.getElementById('batchName').value,
+        batch_code: document.getElementById('batchCode').value,
         subject: document.getElementById('batchSubject').value,
         year: document.getElementById('batchYear').value,
         tutor: document.getElementById('batchTutors').value,

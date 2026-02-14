@@ -61,33 +61,87 @@ function loadAttendanceData() {
     const batch = document.getElementById('attendanceBatchSelect').value;
     const records = db.getRecords('attendance').filter(a => a.batch === batch);
     const table = document.getElementById('attendanceTable');
+
     if (table) {
         table.innerHTML = records.length ? `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Present Count</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${records.map(r => `
-                        <tr>
-                            <td><strong>${new Date(r.date).toLocaleDateString()}</strong></td>
-                            <td>${r.present.length} Students</td>
-                            <td><span class="status-badge paid">Recorded</span></td>
-                            <td>
-                                <button class="btn btn-secondary btn-small" onclick="editAttendance('${r.id}')"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-danger btn-small" onclick="deleteAttendance('${r.id}')"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start;">
+                <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Present</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${records.map(r => `
+                                <tr>
+                                    <td><strong>${new Date(r.date).toLocaleDateString()}</strong></td>
+                                    <td>${r.present.length} Students</td>
+                                    <td><span class="status-badge paid">Recorded</span></td>
+                                    <td>
+                                        <div class="row-actions">
+                                            <button class="btn btn-secondary btn-small" onclick="editAttendance('${r.id}')"><i class="fas fa-edit"></i></button>
+                                            <button class="btn btn-danger btn-small" onclick="deleteAttendance('${r.id}')"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card" style="margin-bottom: 0;">
+                    <h4 style="margin-bottom: 15px; font-size: 14px; text-transform: uppercase; color: var(--text-secondary);">Attendance Trend</h4>
+                    <div style="height: 250px;">
+                        <canvas id="attendanceBatchChart"></canvas>
+                    </div>
+                </div>
+            </div>
         ` : '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No attendance records found for this batch.</p>';
+
+        if (records.length) {
+            updateAttendanceChart(records);
+        }
     }
+}
+
+let attendanceBatchChartInstance = null;
+function updateAttendanceChart(records) {
+    const ctx = document.getElementById('attendanceBatchChart');
+    if (!ctx) return;
+
+    const labels = records.map(r => new Date(r.date).toLocaleDateString()).reverse().slice(-7);
+    const data = records.map(r => r.present.length).reverse().slice(-7);
+
+    if (attendanceBatchChartInstance) attendanceBatchChartInstance.destroy();
+
+    attendanceBatchChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Students Present',
+                data: data,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#10b981'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
 }
 
 function editAttendance(id) {

@@ -10,9 +10,13 @@ function loadDashboard() {
 
     const totalFees = students.reduce((sum, s) => sum + (parseFloat(s.totalFee) || 0), 0);
     const collectedFees = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    const pendingFees = totalFees - collectedFees;
 
     const dashboardStats = document.getElementById('dashboardStats');
     if (dashboardStats) {
+        const collectedDisplay = collectedFees >= 1000 ? `₹${(collectedFees / 1000).toFixed(1)}K` : `₹${collectedFees}`;
+        const pendingDisplay = pendingFees >= 1000 ? `₹${(pendingFees / 1000).toFixed(1)}K` : `₹${pendingFees}`;
+
         dashboardStats.innerHTML = `
             <div class="stat-card">
                 <div class="stat-icon students">👨‍🎓</div>
@@ -26,13 +30,13 @@ function loadDashboard() {
             </div>
             <div class="stat-card">
                 <div class="stat-icon fees">💰</div>
-                <div class="stat-value">₹${(collectedFees / 1000).toFixed(1)}K</div>
+                <div class="stat-value" style="color: var(--success);">${collectedDisplay}</div>
                 <div class="stat-label">Fees Collected</div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon tutors">👨‍🏫</div>
-                <div class="stat-value">${tutors.length}</div>
-                <div class="stat-label">Active Tutors</div>
+                <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">💸</div>
+                <div class="stat-value" style="color: var(--danger);">${pendingDisplay}</div>
+                <div class="stat-label">Pending Balance</div>
             </div>
         `;
     }

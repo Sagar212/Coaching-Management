@@ -63,17 +63,11 @@ function openStudentModal() {
 function saveStudent(e) {
     if (e) e.preventDefault();
     const modal = document.getElementById('studentModal');
-    const editId = modal.dataset.editId;
+    const editId = modal?.dataset.editId;
 
-    // Handle multiple select for batches if applicable, but currently it's a single select in HTML
-    // Logic below assumes single select based on provided HTML structure (Step 1454)
-    // BUT TuitionManager supports array. We should adapt.
-    // If <select> is multiple, we collect values. If not, single.
+    // Get multiple batches
     const batchSelect = document.getElementById('studentBatches');
     const selectedBatches = Array.from(batchSelect.selectedOptions).map(opt => opt.value);
-
-    // If existing logic used 'batch' (singular), we migrate to 'batches' (array)
-    // For now, let's keep it robust.
 
     const studentData = {
         name: document.getElementById('studentName').value,
@@ -82,32 +76,30 @@ function saveStudent(e) {
         phone: document.getElementById('studentPhone').value,
         address: document.getElementById('studentAddress').value,
         batches: selectedBatches,
-        // Also keep 'batch' for backward compatibility if needed, or rely on 'batches'
-        batch: selectedBatches[0] || '',
+        batch: selectedBatches[0] || '', // Fallback for single-batch legacy code
         totalFee: parseFloat(document.getElementById('studentFees').value) || 0,
         parentName: document.getElementById('studentParentName').value,
         parentPhone: document.getElementById('studentParentPhone').value,
-        parentEmail: document.getElementById('studentParentEmail').value,
-        status: 'active'
+        parentEmail: document.getElementById('studentParentEmail').value
     };
 
-    if (editId) {
-        // Preserve paid amount
-        const existing = db.getRecords('students').find(s => s.id === editId);
-        if (existing) {
-            studentData.paidAmount = existing.paidAmount || 0;
-            studentData.student_code = existing.student_code;
+    if (!editId) {
+        tuitionManager.enrollStudent(studentData);
+        showNotification('Student enrolled successfully!');
+    } else {
+        const student = db.getRecords('students').find(s => s.id === editId);
+        if (student) {
+            studentData.paidAmount = student.paidAmount || 0;
+            studentData.attendance = student.attendance || [];
+            studentData.profilePic = student.profilePic;
         }
         db.updateRecord('students', editId, studentData);
-        showNotification('Student updated successfully!');
-    } else {
-        tuitionManager.enrollStudent(studentData); // Auto-generates ID and Code
-        showNotification('Student enrolled successfully!');
+        showNotification('Student details updated!');
     }
 
     closeModal('studentModal');
     loadStudents();
-    loadDashboard(); // Refresh dashboard stats
+    if (typeof loadDashboard === 'function') loadDashboard();
 }
 
 function editStudent(id) {
