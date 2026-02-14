@@ -109,6 +109,7 @@ function loadAttendanceData() {
 
 // Global variable to store chart records for click handler access
 let currentChartRecords = [];
+let attendanceBatchChartInstance = null;
 
 function updateAttendanceChart(records) {
     const ctx = document.getElementById('attendanceBatchChart');

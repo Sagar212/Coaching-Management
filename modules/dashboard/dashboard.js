@@ -156,6 +156,7 @@ function loadDashboard() {
     }
 
     // Holidays Detection
+    const today = new Date(); // Moved to function scope for reuse
     let upcomingHolidays = [];
     try {
         // Shared holiday data source

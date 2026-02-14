@@ -1,30 +1,77 @@
 const SupabaseBackup = {
     SUPABASE_URL: 'https://dujxruuoebpmextqtnpw.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1anhydXVvZWJwbWV4dHF0bnB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzgyMjksImV4cCI6MjA4NjQ1NDIyOX0.bt6fbwZtutTvrnOQH9RgpVHqvT4ddpn4eL-EvfbL7zI',
-    TABLE_NAME: 'coaching_backups',
+    TABLE_NAME: 'backups',
     PROJECT_ID: 'coaching_management_pro', // Unique ID for this project
     client: null,
     isConnected: false,
+    lastError: null,
 
     init() {
+        console.log('☁️ Starting Supabase init...');
+        console.log('☁️ window.supabase:', window.supabase);
+        console.log('☁️ typeof supabase:', typeof supabase);
+
         try {
+            // Robustly find the createClient function
+            let createClient = null;
+
+            // Check all possible locations
             if (typeof supabase !== 'undefined' && supabase.createClient) {
-                this.client = supabase.createClient(this.SUPABASE_URL, this.SUPABASE_KEY);
+                console.log('☁️ Found via global supabase.createClient');
+                createClient = supabase.createClient;
+            } else if (window.supabase && window.supabase.createClient) {
+                console.log('☁️ Found via window.supabase.createClient');
+                createClient = window.supabase.createClient;
+            } else if (window.Supabase && window.Supabase.createClient) {
+                console.log('☁️ Found via window.Supabase.createClient');
+                createClient = window.Supabase.createClient;
+            } else {
+                // Debug: Show what's actually available
+                console.error('☁️ Supabase not found. Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('supabase')));
+
+                // Try to access the library directly from the CDN global
+                if (window.supabase) {
+                    console.log('☁️ window.supabase exists:', window.supabase);
+                    console.log('☁️ window.supabase keys:', Object.keys(window.supabase));
+
+                    // The UMD build might export differently
+                    if (window.supabase.supabase && window.supabase.supabase.createClient) {
+                        console.log('☁️ Found via window.supabase.supabase.createClient');
+                        createClient = window.supabase.supabase.createClient;
+                    }
+                }
+            }
+
+            if (createClient) {
+                this.client = createClient(this.SUPABASE_URL, this.SUPABASE_KEY);
                 console.log('☁️ Supabase client initialized for table:', this.TABLE_NAME);
                 this.testConnection(true);
             } else {
-                console.warn('☁️ Supabase library not loaded. Check script imports.');
-                this.updateStatus(false, 'Lib Missing');
+                const errorMsg = 'Supabase library issue: createClient not found';
+                console.error('☁️', errorMsg);
+                console.error('☁️ window.supabase structure:', window.supabase);
+                this.lastError = errorMsg + '\n\nCheck: Is the CDN script loaded? Check browser console.';
+                this.updateStatus(false, 'Lib Error');
+
+                // Show alert for debugging
+                alert('❌ Supabase Init Failed:\n\n' + this.lastError + '\n\nwindow.supabase = ' + (window.supabase ? 'exists' : 'undefined'));
             }
         } catch (err) {
             console.error('☁️ Supabase init error:', err);
+            this.lastError = 'Init Exception: ' + err.message;
             this.updateStatus(false, 'Init Error');
+            alert('❌ Supabase Init Exception:\n\n' + err.message + '\n\nStack:\n' + err.stack);
         }
     },
 
     async testConnection(silent = false) {
         if (!this.client) {
-            if (!silent) showNotification('Cloud not configured.', 'error');
+            const msg = this.lastError || 'Cloud client not initialized.';
+            if (!silent) {
+                alert('❌ Cloud Test Failed:\n\n' + msg + '\n\nCheck console for details.');
+                showNotification(msg, 'error');
+            }
             return false;
         }
 
@@ -37,7 +84,10 @@ const SupabaseBackup = {
                 console.warn('☁️ Connection test warning (Table might be missing):', error.message);
                 if (error.code === '42P01') { // Undefined table
                     this.updateStatus(false, 'Table Missing');
-                    if (!silent) showNotification('Connected, but backup table is missing. Run SQL script.', 'warning');
+                    if (!silent) {
+                        alert('⚠️ Cloud Test Warning:\n\nTable Missing (Code: 42P01)\n\nThe backup table does not exist in Supabase.\nRun the SQL schema script.');
+                        showNotification('Connected, but backup table is missing. Run SQL script.', 'warning');
+                    }
                     return false;
                 }
                 throw error;
@@ -45,13 +95,21 @@ const SupabaseBackup = {
 
             this.isConnected = true;
             this.updateStatus(true, 'Connected');
-            if (!silent) showNotification('Cloud connection successful!');
+            this.lastError = null; // Clear error on success
+            if (!silent) {
+                alert('✅ Cloud Connection Successful!\n\nSupabase is connected and ready.\nTable: ' + this.TABLE_NAME);
+                showNotification('Cloud connection successful!', 'success');
+            }
             return true;
         } catch (err) {
             console.error('☁️ Connection test failed:', err);
             this.isConnected = false;
+            this.lastError = 'Connection Error: ' + err.message;
             this.updateStatus(false, 'Disconnected');
-            if (!silent) showNotification('Cloud connection failed. ' + err.message, 'error');
+            if (!silent) {
+                alert('❌ Cloud Connection Failed:\n\n' + err.message + '\n\nFull error:\n' + JSON.stringify(err, null, 2));
+                showNotification('Cloud connection failed. ' + err.message, 'error');
+            }
             return false;
         }
     },
@@ -59,7 +117,11 @@ const SupabaseBackup = {
     updateStatus(connected, text) {
         const dot = document.getElementById('cloudStatusDot');
         const label = document.getElementById('cloudStatusText');
-        if (dot) dot.className = `cloud-status-dot ${connected ? 'connected' : ''}`;
+        console.log('☁️ updateStatus called:', { connected, text, dotFound: !!dot, labelFound: !!label });
+        if (dot) {
+            dot.className = `cloud-status-dot ${connected ? 'connected' : ''}`;
+            console.log('☁️ Dot className set to:', dot.className);
+        }
         if (label) label.textContent = text;
     },
 
@@ -80,23 +142,17 @@ const SupabaseBackup = {
 
             const jsonString = JSON.stringify(data);
             const payload = {
-                project_name: this.PROJECT_ID,
+                project_name: this.PROJECT_ID, // Use project_name to match 'backups' table schema
                 backup_data: data,
                 backup_size: jsonString.length,
                 version: '2.0',
-                compression_type: 'none',
-                checksum: btoa(jsonString.substring(0, 100)), // Simple checksum for DDL compliance
-                audit_trail: {
-                    user: db.getData().settings?.adminName || 'Admin',
-                    action: 'manual_backup',
-                    timestamp: new Date().toISOString()
-                }
+                created_by_name: db.getData().settings?.adminName || 'Admin'
             };
 
             const { error } = await this.client.from(this.TABLE_NAME).insert(payload);
             if (error) throw error;
 
-            showNotification('Backup saved to cloud successfully!');
+            showNotification('Backup saved to cloud successfully!', 'success');
         } catch (err) {
             console.error('☁️ Save failed:', err);
             showNotification('Cloud save failed: ' + err.message, 'error');
@@ -117,7 +173,7 @@ const SupabaseBackup = {
             const { data, error } = await this.client
                 .from(this.TABLE_NAME)
                 .select('backup_data')
-                .eq('project_name', this.PROJECT_ID)
+                .eq('project_name', this.PROJECT_ID) // Use project_name
                 .order('created_at', { ascending: false })
                 .limit(1);
 
@@ -128,7 +184,7 @@ const SupabaseBackup = {
             }
 
             db.saveData(data[0].backup_data);
-            showNotification('System restored from cloud! Reloading...');
+            showNotification('System restored from cloud! Reloading...', 'success');
             setTimeout(() => location.reload(), 1500);
         } catch (err) {
             console.error('☁️ Restore failed:', err);
@@ -149,7 +205,7 @@ const SupabaseBackup = {
             const { data, error } = await this.client
                 .from(this.TABLE_NAME)
                 .select('id, created_at, backup_size')
-                .eq('project_name', this.PROJECT_ID)
+                .eq('project_name', this.PROJECT_ID) // Use project_name
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -158,6 +214,7 @@ const SupabaseBackup = {
                 body.innerHTML = '<tr><td colspan="3" style="text-align:center;">No backups found.</td></tr>';
                 return;
             }
+
 
             body.innerHTML = data.map(b => `
                 <tr>
@@ -187,7 +244,7 @@ const SupabaseBackup = {
             if (error) throw error;
 
             db.saveData(data.backup_data);
-            showNotification('Backup restored! Reloading...');
+            showNotification('Backup restored! Reloading...', 'success');
             setTimeout(() => location.reload(), 1500);
         } catch (err) {
             showNotification('Restore failed: ' + err.message, 'error');
@@ -204,7 +261,7 @@ const SupabaseBackup = {
                 .eq('id', id);
 
             if (error) throw error;
-            showNotification('Backup deleted.');
+            showNotification('Backup deleted.', 'info');
             this.openManager(); // Refresh list
         } catch (err) {
             showNotification('Delete failed.', 'error');
@@ -217,7 +274,7 @@ const SupabaseBackup = {
             const { data, error } = await this.client
                 .from(this.TABLE_NAME)
                 .select('backup_data')
-                .eq('project_name', this.PROJECT_ID)
+                .eq('project_name', this.PROJECT_ID) // Fixed: was project_id
                 .order('created_at', { ascending: false })
                 .limit(1);
 

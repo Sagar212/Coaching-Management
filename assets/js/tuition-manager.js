@@ -103,6 +103,31 @@ class TuitionManager {
         return false;
     }
 
+    recordSessionAdjustment(adjustmentData) {
+        // adjustmentData: { batchId, originalDate, type, newDate, newTime, reason }
+        const existing = this.db.getRecords('batch_adjustments').find(a =>
+            a.batchId === adjustmentData.batchId && a.originalDate === adjustmentData.originalDate
+        );
+
+        if (existing) {
+            return this.db.updateRecord('batch_adjustments', existing.id, adjustmentData);
+        } else {
+            return this.db.addRecord('batch_adjustments', adjustmentData);
+        }
+    }
+
+    getSessionAdjustments(batchId = null, month = null) {
+        let adjustments = this.db.getRecords('batch_adjustments') || [];
+        if (batchId) {
+            adjustments = adjustments.filter(a => a.batchId === batchId);
+        }
+        // Month filtering if needed (yyyy-mm)
+        if (month) {
+            adjustments = adjustments.filter(a => a.originalDate.startsWith(month));
+        }
+        return adjustments;
+    }
+
     // ========== FEE MANAGEMENT ==========
 
     recordPayment(paymentData) {
