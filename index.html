@@ -1851,6 +1851,18 @@
                     <div id="payrollTable"></div>
                 </div>
 
+                <!-- Homework Submissions View (Hidden by default) -->
+                <div class="page-content" id="homeworkSubmissions" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title" id="hwSubmissionTitle">📝 Homework Tracking</h3>
+                            <button class="btn btn-secondary btn-small" onclick="showSection('homework')">Back to
+                                List</button>
+                        </div>
+                        <div id="hwSubmissionsList"></div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">📈 Payroll Analytics</h3>
@@ -2052,6 +2064,26 @@
                     <div class="form-group">
                         <label>Course Fees*</label>
                         <input type="number" id="studentFees" required placeholder="₹">
+                        <div style="margin-top: 10px;">
+                            <label>Payment Plan</label>
+                            <select id="studentPaymentPlan" onchange="updateFeeBreakdown()">
+                                <option value="monthly">Monthly</option>
+                                <option value="annual">Annual</option>
+                                <option value="semiannual">Semi-Annual</option>
+                                <option value="per_batch">Per Batch</option>
+                                <option value="per_subject">Per Subject</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fee Reminder Date</label>
+                        <input type="date" id="studentReminderDate">
+                    </div>
+                    <div id="feeBreakdownHint"
+                        style="font-size: 11px; color: var(--text-secondary); padding-top: 25px;">
+                        <!-- Auto-calculation hint -->
                     </div>
                 </div>
                 <h4 style="margin: 20px 0 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
@@ -2250,8 +2282,17 @@
             </div>
             <form id="eventForm" onsubmit="saveEvent(event)">
                 <div class="form-group">
-                    <label>Title*</label>
-                    <input type="text" id="eventTitle" required>
+                    <label>Assignment Title*</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="homeworkTitle" required style="flex: 1;">
+                        <select id="homeworkTemplateSelect" onchange="applyHomeworkTemplate()" style="width: 150px;">
+                            <option value="">Templates...</option>
+                            <option value="ssc_math">SSC Math</option>
+                            <option value="ssc_sci">SSC Science</option>
+                            <option value="case_study">Case Study</option>
+                            <option value="revision">Revision</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -2608,8 +2649,29 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Amount*</label>
-                        <input type="number" id="payrollAmount" required>
+                        <label>Base Salary*</label>
+                        <input type="number" id="payrollBaseSalary" required oninput="calculatePayrollTotal()">
+                    </div>
+                    <div class="form-group">
+                        <label>Classes Taken</label>
+                        <input type="number" id="payrollClassesTaken" placeholder="e.g., 20">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bonus</label>
+                        <input type="number" id="payrollBonus" value="0" oninput="calculatePayrollTotal()">
+                    </div>
+                    <div class="form-group">
+                        <label>Deductions</label>
+                        <input type="number" id="payrollDeductions" value="0" oninput="calculatePayrollTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Amount</label>
+                        <input type="number" id="payrollTotalAmount" readonly
+                            style="background: var(--bg-primary); font-weight: 700;">
                     </div>
                     <div class="form-group">
                         <label>Payment Mode</label>
@@ -2619,6 +2681,10 @@
                             <option value="cheque">Cheque</option>
                             <option value="online">Online</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Date</label>
+                        <input type="date" id="payrollPaymentDate">
                     </div>
                 </div>
                 <div class="form-group">
@@ -2687,6 +2753,7 @@
     <script src="modules/exams/exams.js"></script>
     <script src="modules/homework/homework.js"></script>
     <script src="modules/syllabus/syllabus.js"></script>
+    <script src="modules/payroll/payroll.js"></script>
     <script src="modules/communications/communications.js"></script>
     <script src="modules/reports/reports.js"></script>
     <script src="modules/analytics/analytics.js"></script>

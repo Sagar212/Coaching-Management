@@ -48,17 +48,30 @@ function loadStudentReport() {
 
     const totalFees = parseFloat(student.totalFee) || 0;
     const paidFees = parseFloat(student.paidAmount) || 0;
-    const attendanceRecords = (db.getRecords('attendance') || []).filter(a => {
-        return a.present && Array.isArray(a.present) && a.present.includes(studentId);
+
+    // Calculate Attendance properly
+    const allAttendance = db.getRecords('attendance') || [];
+    const studentBatches = student.batches || [student.batch];
+
+    const relevantAttendance = allAttendance.filter(a => {
+        const batchId = a.batchId || a.batch;
+        return studentBatches.includes(batchId);
     });
 
-    const daysPresent = attendanceRecords.length;
+    const daysPresent = relevantAttendance.filter(a =>
+        a.present && Array.isArray(a.present) && a.present.includes(studentId)
+    ).length;
+
+    const totalConducted = relevantAttendance.length;
+    const daysAbsent = totalConducted - daysPresent;
+    const attendancePercentage = totalConducted > 0 ? Math.round((daysPresent / totalConducted) * 100) : 100;
 
     const toneSelect = document.getElementById('reportTone');
     const tone = toneSelect ? toneSelect.value : 'balanced';
     let remarks = '';
     if (tone === 'encouraging') remarks = "Showing great potential! Keep up the good work.";
     else if (tone === 'critical') remarks = "Needs to focus more on studies and regular attendance.";
+    else if (attendancePercentage < 75) remarks = "Attendance is low. Regular presence is required for academic success.";
     else remarks = "Performance is consistent. Good progress.";
 
     const autoSignEl = document.getElementById('autoSign');
@@ -115,12 +128,21 @@ function loadStudentReport() {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
                 <div style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px;">
                     <div style="font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">Attendance Summary</div>
-                    <div style="display: flex; align-items: baseline; gap: 8px;">
-                        <div style="font-size: 28px; font-weight: 800; color: var(--primary);">${daysPresent}</div>
-                        <div style="font-size: 14px; color: #475569;">Days Conducted</div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <div>
+                            <span style="font-size: 24px; font-weight: 800; color: var(--success);">${daysPresent}</span>
+                            <span style="font-size: 12px; color: #64748b;"> Present</span>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 800; color: var(--danger);">${daysAbsent}</span>
+                            <span style="font-size: 12px; color: #64748b;"> Absent</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #475569;">
+                        Total Conduction: <strong>${totalConducted} Days</strong> | Record: <strong>${attendancePercentage}%</strong>
                     </div>
                     <div style="margin-top: 10px; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
-                         <div style="width: ${Math.min(100, (daysPresent / 30) * 100)}%; height: 100%; background: var(--primary);"></div>
+                         <div style="width: ${attendancePercentage}%; height: 100%; background: ${attendancePercentage < 75 ? 'var(--danger)' : 'var(--success)'};"></div>
                     </div>
                 </div>
                 <div style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px;">

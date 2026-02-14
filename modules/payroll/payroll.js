@@ -54,8 +54,15 @@ function savePayroll(e) {
 }
 
 function loadPayrollData() {
-    const filterTeacherId = document.getElementById('payrollTeacherFilter')?.value || '';
+    const filterTeacherSelect = document.getElementById('payrollTeacherFilter');
     const filterMonth = document.getElementById('payrollMonthFilter')?.value || '';
+
+    // Populate filter dropdown if empty
+    if (filterTeacherSelect && filterTeacherSelect.options.length <= 1) {
+        populateTutorDropdown('payrollTeacherFilter');
+    }
+
+    const filterTeacherId = filterTeacherSelect?.value || '';
 
     const payroll = tuitionManager.getPayrollHistory(
         filterTeacherId || null,

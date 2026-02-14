@@ -9,34 +9,58 @@ function loadDashboard() {
     const payments = db.getRecords('payments');
 
     const totalFees = students.reduce((sum, s) => sum + (parseFloat(s.totalFee) || 0), 0);
-    const collectedFees = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    // Use student.paidAmount for a more comprehensive total of collected fees
+    const collectedFees = students.reduce((sum, s) => sum + (parseFloat(s.paidAmount) || 0), 0);
     const pendingFees = totalFees - collectedFees;
+
+    // Monthly stats
+    const thisMonth = new Date().getMonth();
+    const studentsThisMonth = students.filter(s => new Date(s.createdAt).getMonth() === thisMonth).length;
+    const revenueThisMonth = payments.filter(p => new Date(p.date).getMonth() === thisMonth)
+        .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
     const dashboardStats = document.getElementById('dashboardStats');
     if (dashboardStats) {
-        const collectedDisplay = collectedFees >= 1000 ? `₹${(collectedFees / 1000).toFixed(1)}K` : `₹${collectedFees}`;
-        const pendingDisplay = pendingFees >= 1000 ? `₹${(pendingFees / 1000).toFixed(1)}K` : `₹${pendingFees}`;
-
         dashboardStats.innerHTML = `
             <div class="stat-card">
                 <div class="stat-icon students">👨‍🎓</div>
-                <div class="stat-value">${students.length}</div>
-                <div class="stat-label">Total Students</div>
+                <div class="stat-details">
+                    <div class="stat-value">${students.length}</div>
+                    <div class="stat-label">Total Students</div>
+                    <div class="stat-sublabel" style="color: var(--success); font-size: 11px;">
+                        <i class="fas fa-arrow-up"></i> ${studentsThisMonth} new this month
+                    </div>
+                </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon batches">🎯</div>
-                <div class="stat-value">${batches.length}</div>
-                <div class="stat-label">Active Batches</div>
+                <div class="stat-details">
+                    <div class="stat-value">${batches.length}</div>
+                    <div class="stat-label">Active Batches</div>
+                    <div class="stat-sublabel" style="color: var(--primary); font-size: 11px;">
+                        ${batches.filter(b => b.status === 'active').length} currently running
+                    </div>
+                </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon fees">💰</div>
-                <div class="stat-value" style="color: var(--success);">${collectedDisplay}</div>
-                <div class="stat-label">Fees Collected</div>
+                <div class="stat-icon fees" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">💰</div>
+                <div class="stat-details">
+                    <div class="stat-value" style="color: var(--success); font-size: 20px;">₹${collectedFees.toLocaleString()}</div>
+                    <div class="stat-label">Fees Collected</div>
+                    <div class="stat-sublabel" style="color: var(--success); font-size: 11px;">
+                        +₹${revenueThisMonth.toLocaleString()} this month
+                    </div>
+                </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">💸</div>
-                <div class="stat-value" style="color: var(--danger);">${pendingDisplay}</div>
-                <div class="stat-label">Pending Balance</div>
+                <div class="stat-details">
+                    <div class="stat-value" style="color: var(--danger); font-size: 20px;">₹${pendingFees.toLocaleString()}</div>
+                    <div class="stat-label">Pending Balance</div>
+                    <div class="stat-sublabel" style="color: var(--danger); font-size: 11px;">
+                        ${students.filter(s => (s.paidAmount || 0) < s.totalFee).length} students pending
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -75,28 +99,44 @@ function loadDashboard() {
         }).join('') : '<p style="color: var(--text-secondary);">No syllabus data</p>';
     }
 
-    // Fee Reminders
-    const today = new Date();
-    const daysAhead = parseInt(document.getElementById('dashboardFeeFilter')?.value || 7);
-    const futureDate = new Date(today);
-    futureDate.setDate(today.getDate() + daysAhead);
-
-    const upcomingFeeReminders = events.filter(e => {
-        if (e.type !== 'feeReminder') return false;
-        const eventDate = new Date(e.date);
-        return eventDate >= today && eventDate <= futureDate;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date));
-
+    // Dynamic Fee Reminders based on Student Data
     const feeRemindersEl = document.getElementById('feeReminders');
     if (feeRemindersEl) {
-        feeRemindersEl.innerHTML = upcomingFeeReminders.length ? upcomingFeeReminders.slice(0, 5).map(r => `
-            <div style="background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); padding: 10px; border-radius: 6px; margin-bottom: 8px;">
-                <div style="font-weight: 600; font-size: 13px;">${r.title}</div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
-                    ${new Date(r.date).toLocaleDateString()}
+        const today = new Date();
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + 15); // Check 15 days ahead
+
+        const overdueStudents = students.filter(s => {
+            // Priority 1: Explicit reminder date from student modal
+            if (s.reminderDate) {
+                const remDate = new Date(s.reminderDate);
+                if (remDate <= futureDate) return true;
+            }
+            // Priority 2: Automatic plan checking
+            if ((s.paidAmount || 0) < s.totalFee) {
+                const monthsSinceEnroll = Math.max(1, Math.floor((today - new Date(s.createdAt)) / (30 * 24 * 60 * 60 * 1000)));
+                if (s.paymentPlan === 'monthly') {
+                    const expected = (s.totalFee / 12) * monthsSinceEnroll;
+                    return (s.paidAmount || 0) < expected;
+                }
+            }
+            return false;
+        }).slice(0, 5);
+
+        feeRemindersEl.innerHTML = overdueStudents.length ? overdueStudents.map(s => `
+            <div style="background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); text-align: left;">${s.name}</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px; text-align: left;">
+                        Plan: ${s.paymentPlan || 'N/A'} | Bal: ₹${s.totalFee - (s.paidAmount || 0)}
+                    </div>
                 </div>
+                <button class="btn btn-small" onclick="window.open('https://wa.me/${(s.phone || s.parentPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent('Dear Parent, gentle reminder for the fee payment of ' + s.name + '. Pending: ₹' + (s.totalFee - (s.paidAmount || 0)))}', '_blank')" 
+                        style="background: #25d366; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                    <i class="fab fa-whatsapp"></i> Remind
+                </button>
             </div>
-        `).join('') : '<p style="color: var(--text-secondary); font-size: 13px;">No reminders</p>';
+        `).join('') : '<p style="color: var(--text-secondary); font-size: 13px; padding: 10px;">No urgent fee reminders</p>';
     }
 
     // Holidays (Requires global indianHolidays2026 or fetch from DB/TuitionManager)

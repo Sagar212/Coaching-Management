@@ -16,6 +16,8 @@ class DataManager {
                 attendance: [],
                 dayNotes: [],
                 payments: [],
+                payroll: [],
+                homework_submissions: [],
                 settings: {
                     appName: 'TutionPro',
                     name: 'TutionPro Academy',

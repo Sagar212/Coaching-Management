@@ -118,6 +118,7 @@ function showDayDetails(dateString) {
     const note = db.getRecords('dayNotes').find(n => n.date === dateString);
     const holiday = indianHolidays2026.find(h => h.date === dateString);
     const batches = db.getRecords('batches');
+    const attendance = db.getRecords('attendance').filter(a => a.date === dateString);
     const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
     const sessions = batches.filter(b => b.schedule && b.schedule.toLowerCase().includes(dayName.substring(0, 3).toLowerCase()));
 
@@ -129,10 +130,31 @@ function showDayDetails(dateString) {
         </div>`;
     }
 
-    if (sessions.length) {
-        html += '<div style="margin: 10px 0;"><strong>Batch Sessions:</strong></div>';
+    if (attendance.length) {
+        html += '<div style="margin: 10px 0;"><strong>Attendance Records:</strong></div>';
+        attendance.forEach(a => {
+            const batch = batches.find(b => b.id === (a.batchId || a.batch));
+            const presentCount = (a.present || []).length;
+            const totalInBatch = (batch?.students || []).length;
+            const absentCount = totalInBatch - presentCount;
+
+            html += `
+                <div style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>${batch?.name || 'Unknown Batch'}</strong>
+                        <span style="font-size: 11px; color: var(--text-secondary);">${a.markedBy || 'Admin'}</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; font-size: 12px;">
+                        <span style="color: var(--success);"><i class="fas fa-check-circle"></i> ${presentCount} Present</span>
+                        <span style="color: var(--danger);"><i class="fas fa-times-circle"></i> ${absentCount > 0 ? absentCount : 0} Absent</span>
+                    </div>
+                </div>
+            `;
+        });
+    } else if (sessions.length) {
+        html += '<div style="margin: 10px 0;"><strong>Scheduled Batches:</strong></div>';
         sessions.forEach(s => {
-            html += `<div style="background: rgba(14, 165, 233, 0.1); padding: 8px; border-radius: 6px; margin: 5px 0; border-left: 3px solid var(--session); font-size: 13px;">${s.name} - ${s.schedule}</div>`;
+            html += `<div style="background: rgba(14, 165, 233, 0.1); padding: 8px; border-radius: 6px; margin: 5px 0; border-left: 3px solid var(--session); font-size: 13px;">${s.name} - ${s.schedule} <span style="font-size: 10px; color: var(--text-secondary); margin-left: 5px;">(Not marked yet)</span></div>`;
         });
     }
 
@@ -147,8 +169,8 @@ function showDayDetails(dateString) {
         html += `<div style="margin: 10px 0;"><strong>Note:</strong><div style="background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 13px;">${note.text}</div></div>`;
     }
 
-    if (!holiday && !sessions.length && !events.length && !note) {
-        html += '<p style="color: var(--text-secondary); margin-top: 10px; font-size: 13px;">No events for this day</p>';
+    if (!holiday && !sessions.length && !events.length && !note && !attendance.length) {
+        html += '<p style="color: var(--text-secondary); margin-top: 10px; font-size: 13px;">No activities or records for this day</p>';
     }
 
     document.getElementById('dayDetailsPane').innerHTML = html;

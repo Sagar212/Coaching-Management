@@ -151,16 +151,21 @@ class TuitionManager {
         payments.forEach(p => {
             const amount = parseFloat(p.amount) || 0;
             const paymentDate = new Date(p.paymentDate || p.date);
+            const status = p.status || 'paid'; // Default to paid if not specified
 
-            if (p.status === 'paid') {
+            if (status === 'paid') {
                 stats.totalCollected += amount;
                 if (paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear) {
                     stats.monthlyCollected += amount;
                 }
-            } else if (p.status === 'pending') {
+            } else if (status === 'pending') {
                 stats.totalPending += amount;
-            } else if (p.status === 'overdue') {
-                stats.totalOverdue += amount;
+            } else if (status === 'overdue' || status === 'partial') {
+                // For partial, the 'amount' is what's paid, but status might be 'partial'
+                // Actually, if status is 'paid' it means this transaction is done.
+                // If the whole student fee is partial, that's different.
+                // In recordPayment, amount is what was just paid.
+                stats.totalCollected += amount;
             }
         });
 
