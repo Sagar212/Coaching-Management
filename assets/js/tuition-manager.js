@@ -301,22 +301,36 @@ class TuitionManager {
 
     getExamAnalytics(examId) {
         const exam = this.db.getRecords('exams').find(e => e.id === examId);
-        if (!exam || !exam.results || exam.results.length === 0) return null;
+        if (!exam || !exam.results) return null;
 
         const marks = exam.results.map(r => parseFloat(r.marks) || 0);
-        const passingMarks = parseFloat(exam.passingMarks) || 0;
+        const totalStudents = marks.length;
+        if (totalStudents === 0) return {
+            averageMarks: 0,
+            highestMarks: 0,
+            lowestMarks: 0,
+            passPercentage: 0,
+            passed: 0,
+            failed: 0,
+            totalStudents: 0
+        };
+
+        const passedCount = exam.results.filter(r => parseFloat(r.marks) >= parseFloat(exam.passingMarks)).length;
+        const failedCount = totalStudents - passedCount;
 
         return {
-            examName: exam.name,
-            totalStudents: exam.results.length,
-            averageMarks: (marks.reduce((sum, m) => sum + m, 0) / marks.length).toFixed(2),
+            averageMarks: Math.round(marks.reduce((a, b) => a + b, 0) / totalStudents),
             highestMarks: Math.max(...marks),
             lowestMarks: Math.min(...marks),
-            passed: exam.results.filter(r => parseFloat(r.marks) >= passingMarks).length,
-            failed: exam.results.filter(r => parseFloat(r.marks) < passingMarks).length,
-            passPercentage: ((exam.results.filter(r => parseFloat(r.marks) >= passingMarks).length / exam.results.length) * 100).toFixed(2)
+            passPercentage: Math.round((passedCount / totalStudents) * 100),
+            passed: passedCount,
+            failed: failedCount,
+            totalStudents
         };
     }
+
+
+
 
     generateReportCard(studentId, examId) {
         const student = this.db.getRecords('students').find(s => s.id === studentId);

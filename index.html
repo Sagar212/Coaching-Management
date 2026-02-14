@@ -1874,14 +1874,7 @@
                     <div id="examsTable"></div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">📊 Exam Performance Analytics</h3>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="examPerformanceChart"></canvas>
-                    </div>
-                </div>
+
             </div>
 
             <!-- Parent Portal Page -->
@@ -2680,19 +2673,7 @@
         </div>
     </div>
 
-    <!-- Exam Analytics Modal -->
-    <div class="modal" id="examAnalyticsModal">
-        <div class="modal-content" style="max-width: 900px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Exam Performance Insights</h3>
-                <button class="modal-close" onclick="closeModal('examAnalyticsModal')">&times;</button>
-            </div>
-            <div id="examAnalyticsContent"></div>
-            <div class="btn-group" style="margin-top: 20px;">
-                <button class="btn btn-secondary" onclick="closeModal('examAnalyticsModal')">Close Insights</button>
-            </div>
-        </div>
-    </div>
+
     <!-- Parent Message Modal -->
     <div class="modal" id="parentMessageModal">
         <div class="modal-content">
@@ -2821,22 +2802,7 @@
         </div>
     </div>
 
-    <!-- Exam Analytics Modal -->
-    <div class="modal" id="examAnalyticsModal">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h3 class="modal-title">📊 Exam Analytics</h3>
-                <button class="modal-close" onclick="closeModal('examAnalyticsModal')">&times;</button>
-            </div>
-            <div class="modal-body" id="examAnalyticsContent">
-                <!-- Content will be loaded dynamically -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary"
-                    onclick="closeModal('examAnalyticsModal')">Close</button>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Payroll Modal -->
     <div class="modal" id="payrollModal">
@@ -3030,6 +2996,19 @@
         </div>
     </div>
 
+    <!-- Exam Analytics Modal -->
+    <div class="modal" id="examAnalyticsModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Exam Performance Analytics</h3>
+                <button class="modal-close" onclick="closeModal('examAnalyticsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="examAnalyticsContent">
+                <!-- Analytics will be populated here -->
+            </div>
+        </div>
+    </div>
+
     <!-- Absentee List Modal -->
     <div class="modal" id="absenteeModal">
         <div class="modal-content" style="max-width: 500px;">
@@ -3111,6 +3090,8 @@
     <script src="assets/js/tuition-manager.js"></script>
     <script src="assets/js/backup-service.js"></script>
     <script src="assets/js/app.js"></script>
+
+
 
     <!-- Feature Modules -->
     <script src="modules/dashboard/dashboard.js"></script>

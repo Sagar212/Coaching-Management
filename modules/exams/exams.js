@@ -110,6 +110,7 @@ function loadExams() {
                 <td>
                     <div class="row-actions">
                         <button class="btn btn-small btn-primary" onclick="openMarksEntry('${exam.id}')" title="Capture Marks"><i class="fas fa-file-signature"></i></button>
+                        <button class="btn btn-small btn-info" onclick="viewExamAnalytics('${exam.id}')" title="Analytics"><i class="fas fa-chart-line"></i></button>
                         <button class="btn btn-small btn-success" onclick="whatsappResults('${exam.id}')" title="Share Results"><i class="fab fa-whatsapp"></i></button>
                         <button class="btn btn-small btn-secondary" onclick="editExam('${exam.id}')" title="Edit Info"><i class="fas fa-cog"></i></button>
                         <button class="btn btn-small btn-danger" onclick="deleteExam('${exam.id}')" title="Delete"><i class="fas fa-trash"></i></button>
