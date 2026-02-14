@@ -22,7 +22,7 @@ function loadDashboard() {
     const dashboardStats = document.getElementById('dashboardStats');
     if (dashboardStats) {
         dashboardStats.innerHTML = `
-            <div class="stat-card">
+            <div class="stat-card" onclick="showSection('students')" style="cursor: pointer;" title="Go to Students">
                 <div class="stat-icon students">👨‍🎓</div>
                 <div class="stat-details">
                     <div class="stat-value">${students.length}</div>
@@ -32,7 +32,7 @@ function loadDashboard() {
                     </div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="showSection('batches')" style="cursor: pointer;" title="Go to Batches">
                 <div class="stat-icon batches">🎯</div>
                 <div class="stat-details">
                     <div class="stat-value">${batches.length}</div>
@@ -42,7 +42,7 @@ function loadDashboard() {
                     </div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="showSection('fees')" style="cursor: pointer;" title="Go to Fees">
                 <div class="stat-icon fees" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">💰</div>
                 <div class="stat-details">
                     <div class="stat-value" style="color: var(--success); font-size: 20px;">₹${collectedFees.toLocaleString()}</div>
@@ -52,7 +52,7 @@ function loadDashboard() {
                     </div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="showSection('fees')" style="cursor: pointer;" title="View Pending Fees">
                 <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">💸</div>
                 <div class="stat-details">
                     <div class="stat-value" style="color: var(--danger); font-size: 20px;">₹${pendingFees.toLocaleString()}</div>
@@ -99,63 +99,92 @@ function loadDashboard() {
         }).join('') : '<p style="color: var(--text-secondary);">No syllabus data</p>';
     }
 
-    // Dynamic Fee Reminders based on Student Data
+    // Dynamic Fee Reminders based on Student Data + Calendar Sync
     const feeRemindersEl = document.getElementById('feeReminders');
     if (feeRemindersEl) {
         const today = new Date();
         const futureDate = new Date();
-        futureDate.setDate(today.getDate() + 15); // Check 15 days ahead
+        const filterDays = parseInt(document.getElementById('dashboardFeeFilter')?.value) || 15;
+        futureDate.setDate(today.getDate() + filterDays);
 
+        // 1. Direct Student Plan Reminders
         const overdueStudents = students.filter(s => {
-            // Priority 1: Explicit reminder date from student modal
             if (s.reminderDate) {
                 const remDate = new Date(s.reminderDate);
-                if (remDate <= futureDate) return true;
+                if (remDate >= today && remDate <= futureDate) return true;
             }
-            // Priority 2: Automatic plan checking
-            if ((s.paidAmount || 0) < s.totalFee) {
+            if ((s.paidAmount || 0) < s.totalFee && s.paymentPlan === 'monthly') {
                 const monthsSinceEnroll = Math.max(1, Math.floor((today - new Date(s.createdAt)) / (30 * 24 * 60 * 60 * 1000)));
-                if (s.paymentPlan === 'monthly') {
-                    const expected = (s.totalFee / 12) * monthsSinceEnroll;
-                    return (s.paidAmount || 0) < expected;
-                }
+                const expected = (s.totalFee / 12) * monthsSinceEnroll;
+                return (s.paidAmount || 0) < expected;
             }
             return false;
-        }).slice(0, 5);
+        });
 
-        feeRemindersEl.innerHTML = overdueStudents.length ? overdueStudents.map(s => `
+        // 2. Calendar Event Reminders (from sync)
+        const calendarReminders = db.getRecords('events').filter(e => {
+            const eDate = new Date(e.date);
+            return e.type === 'feeReminder' && eDate >= today && eDate <= futureDate;
+        });
+
+        // Combine and dedup
+        const combined = [...overdueStudents.map(s => ({ type: 'student', data: s, date: s.reminderDate || today })),
+        ...calendarReminders.map(e => ({ type: 'event', data: e, date: e.date }))];
+
+        combined.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        feeRemindersEl.innerHTML = combined.length ? combined.slice(0, 8).map(item => {
+            const s = item.type === 'student' ? item.data : students.find(x => x.id === item.data.studentId);
+            if (!s) return '';
+
+            const bal = s.totalFee - (s.paidAmount || 0);
+            return `
             <div style="background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); text-align: left;">${s.name}</div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px; text-align: left;">
-                        Plan: ${s.paymentPlan || 'N/A'} | Bal: ₹${s.totalFee - (s.paidAmount || 0)}
+                        ${item.type === 'event' ? '<i class="far fa-calendar-alt"></i> ' : ''}Plan: ${s.paymentPlan || 'N/A'} | Bal: ₹${bal.toLocaleString()}
                     </div>
                 </div>
-                <button class="btn btn-small" onclick="window.open('https://wa.me/${(s.phone || s.parentPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent('Dear Parent, gentle reminder for the fee payment of ' + s.name + '. Pending: ₹' + (s.totalFee - (s.paidAmount || 0)))}', '_blank')" 
+                <button class="btn btn-small" onclick="window.open('https://wa.me/${(s.phone || s.parentPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent('Dear Parent, gentle reminder for the fee payment of ' + s.name + '. Pending: ₹' + bal)}')}" 
                         style="background: #25d366; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">
                     <i class="fab fa-whatsapp"></i> Remind
                 </button>
             </div>
-        `).join('') : '<p style="color: var(--text-secondary); font-size: 13px; padding: 10px;">No urgent fee reminders</p>';
+            `;
+        }).join('') : '<p style="color: var(--text-secondary); font-size: 13px; padding: 10px;">No urgent fee reminders</p>';
     }
 
-    // Holidays (Requires global indianHolidays2026 or fetch from DB/TuitionManager)
-    // Assuming indianHolidays2026 is loaded globally or we need to define it here?
-    // It was defined in index.html. We should move it to a shared place or inside calendar.
-    // For now, check if exists, else empty.
-    const holidays = (typeof indianHolidays2026 !== 'undefined') ? indianHolidays2026 : [];
-    const upcomingHolidays = holidays.filter(h => new Date(h.date) >= today).slice(0, 4);
+    // Holidays Detection
+    let upcomingHolidays = [];
+    try {
+        // Shared holiday data source
+        const allHolidays = (typeof window.indianHolidays2026 !== 'undefined') ? window.indianHolidays2026 :
+            ((typeof indianHolidays2026 !== 'undefined') ? indianHolidays2026 : []);
+
+        upcomingHolidays = allHolidays
+            .filter(h => new Date(h.date) >= today)
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .slice(0, 4);
+    } catch (err) {
+        console.error("Dashboard Holiday Load Error:", err);
+    }
 
     const upcomingHolidaysEl = document.getElementById('upcomingHolidays');
     if (upcomingHolidaysEl) {
         upcomingHolidaysEl.innerHTML = upcomingHolidays.length ? upcomingHolidays.map(h => `
-            <div style="background: rgba(236, 72, 153, 0.1); padding: 10px; border-radius: 6px; margin-bottom: 6px;">
-                <div style="font-weight: 600; font-size: 13px;">${h.name} 🇮🇳</div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
-                    ${new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            <div style="background: rgba(236, 72, 153, 0.1); border-left: 3px solid #ec4899; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+                <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); text-align: left;">${h.name} 🇮🇳</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px; text-align: left;">
+                    ${new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
             </div>
-        `).join('') : '<p style="color: var(--text-secondary); font-size: 13px;">No upcoming holidays</p>';
+        `).join('') : '<p style="color: var(--text-secondary); font-size: 13px; padding: 10px;">No upcoming holidays</p>';
+    }
+
+    // Sync Student Reminders to Calendar Events (Proactive Sync)
+    if (typeof tuitionManager !== 'undefined' && tuitionManager.syncFeeRemindersToEvents) {
+        tuitionManager.syncFeeRemindersToEvents();
     }
 
     // Batch Sessions

@@ -533,6 +533,45 @@ class TuitionManager {
             totalExpenses: payrollStats.totalPaid
         };
     }
+
+    // ========== REMINDER SYNC ==========
+
+    syncFeeRemindersToEvents() {
+        const students = this.db.getRecords('students');
+        let events = this.db.getRecords('events');
+
+        let updated = false;
+        students.forEach(s => {
+            if (s.reminderDate) {
+                const eventId = `fee-rem-${s.id}`;
+                const existing = events.find(e => e.id === eventId);
+
+                const eventData = {
+                    id: eventId,
+                    title: `Fee: ${s.name}`,
+                    date: s.reminderDate,
+                    type: 'feeReminder',
+                    studentId: s.id,
+                    description: `Automated reminder for ${s.name}. Plan: ${s.paymentPlan || 'N/A'}`
+                };
+
+                if (!existing) {
+                    events.push(eventData);
+                    updated = true;
+                } else if (existing.date !== s.reminderDate) {
+                    const idx = events.indexOf(existing);
+                    events[idx] = eventData;
+                    updated = true;
+                }
+            }
+        });
+
+        if (updated) {
+            const data = this.db.getData();
+            data.events = events;
+            this.db.saveData(data);
+        }
+    }
 }
 
 // Export for use in main application

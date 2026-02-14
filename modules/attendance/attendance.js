@@ -107,42 +107,120 @@ function loadAttendanceData() {
     }
 }
 
-let attendanceBatchChartInstance = null;
+// Global variable to store chart records for click handler access
+let currentChartRecords = [];
+
 function updateAttendanceChart(records) {
     const ctx = document.getElementById('attendanceBatchChart');
     if (!ctx) return;
 
-    const labels = records.map(r => new Date(r.date).toLocaleDateString()).reverse().slice(-7);
-    const data = records.map(r => r.present.length).reverse().slice(-7);
+    // Sort by date (chronological) for the chart
+    currentChartRecords = [...records].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-10);
+
+    const labels = currentChartRecords.map(r => new Date(r.date).toLocaleDateString());
+    const data = currentChartRecords.map(r => r.present.length);
 
     if (attendanceBatchChartInstance) attendanceBatchChartInstance.destroy();
 
     attendanceBatchChartInstance = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Students Present',
                 data: data,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: '#10b981'
+                backgroundColor: '#6366f1',
+                borderRadius: 4,
+                hoverBackgroundColor: '#4f46e5'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        footer: (tooltipItems) => {
+                            return 'Click bar to view absentees';
+                        }
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: true, grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    grid: { borderDash: [2, 2], color: '#e2e8f0' },
+                    ticks: { precision: 0 }
+                },
                 x: { grid: { display: false } }
+            },
+            onClick: (e, activeElements, chart) => {
+                if (activeElements.length > 0) {
+                    const firstPoint = activeElements[0];
+                    const index = firstPoint.index;
+                    // Ensure we're accessing the correct record based on the sorted data used for the chart
+                    if (currentChartRecords && currentChartRecords[index]) {
+                        showAbsentees(currentChartRecords[index]);
+                    }
+                }
             }
         }
     });
 }
+
+function showAbsentees(record) {
+    const students = db.getRecords('students');
+    const batchId = record.batch || record.batchId;
+
+    // Find all students who should be in this batch
+    // Using loose string matching for batch names/ids as sometimes names are stored
+    const batchStudents = students.filter(s => {
+        if (s.batches && Array.isArray(s.batches)) {
+            return s.batches.includes(batchId);
+        }
+        return s.batch === batchId;
+    });
+
+    // Find absentees
+    const absentStudents = batchStudents.filter(s => !record.present.includes(s.id));
+
+    // Populate Modal
+    const dateStr = new Date(record.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('absenteeDate').textContent = dateStr;
+    document.getElementById('absenteeBatch').textContent = `Batch: ${batchId} | ${absentStudents.length} Absent / ${batchStudents.length} Total`;
+
+    const list = document.getElementById('absenteeList');
+    if (list) {
+        list.innerHTML = absentStudents.length ? absentStudents.map(s => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px;">
+                        ${s.name.charAt(0)}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">${s.name}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${s.phone || 'No Phone'}</div>
+                    </div>
+                </div>
+                <a href="https://wa.me/${(s.phone || s.parentPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent('Dear Parent, ' + s.name + ' was absent for the class on ' + dateStr + '.')}" 
+                   target="_blank" 
+                   class="btn btn-small"
+                   style="background: #25d366; color: white; border: none; padding: 6px 10px; display: flex; gap: 5px; align-items: center;">
+                   <i class="fab fa-whatsapp"></i> Notify
+                </a>
+            </div>
+        `).join('') : `
+            <div style="text-align: center; padding: 30px; color: var(--success);">
+                <i class="fas fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i>
+                <p>100% Attendance! No absentees.</p>
+            </div>
+        `;
+    }
+
+    openModal('absenteeModal');
+}
+
 
 function editAttendance(id) {
     const record = db.getRecords('attendance').find(a => a.id === id);

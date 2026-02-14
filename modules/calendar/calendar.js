@@ -22,6 +22,9 @@ window.indianHolidays2026 = indianHolidays2026;
 // currentCalendarMonth and currentCalendarYear are defined globally in app.js
 
 function loadCalendar() {
+    if (typeof tuitionManager !== 'undefined' && tuitionManager.syncFeeRemindersToEvents) {
+        tuitionManager.syncFeeRemindersToEvents();
+    }
     renderCalendar();
 }
 

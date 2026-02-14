@@ -1,7 +1,7 @@
 const SupabaseBackup = {
     SUPABASE_URL: 'https://dujxruuoebpmextqtnpw.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1anhydXVvZWJwbWV4dHF0bnB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzgyMjksImV4cCI6MjA4NjQ1NDIyOX0.bt6fbwZtutTvrnOQH9RgpVHqvT4ddpn4eL-EvfbL7zI',
-    TABLE_NAME: 'backups',
+    TABLE_NAME: 'coaching_backups',
     PROJECT_ID: 'coaching_management_pro', // Unique ID for this project
     client: null,
     isConnected: false,
@@ -10,11 +10,11 @@ const SupabaseBackup = {
         try {
             if (typeof supabase !== 'undefined' && supabase.createClient) {
                 this.client = supabase.createClient(this.SUPABASE_URL, this.SUPABASE_KEY);
-                console.log('☁️ Supabase client initialized');
+                console.log('☁️ Supabase client initialized for table:', this.TABLE_NAME);
                 this.testConnection(true);
             } else {
-                console.warn('☁️ Supabase library not loaded');
-                this.updateStatus(false, 'Library Missing');
+                console.warn('☁️ Supabase library not loaded. Check script imports.');
+                this.updateStatus(false, 'Lib Missing');
             }
         } catch (err) {
             console.error('☁️ Supabase init error:', err);
@@ -29,8 +29,19 @@ const SupabaseBackup = {
         }
 
         try {
-            const { data, error } = await this.client.from(this.TABLE_NAME).select('id').limit(1);
-            if (error) throw error;
+            // Simple query to check connectivity
+            const { data, error } = await this.client.from(this.TABLE_NAME).select('count', { count: 'exact', head: true });
+
+            if (error) {
+                // If table doesn't exist, we might get a specific error, but connection is "working" if we get a response
+                console.warn('☁️ Connection test warning (Table might be missing):', error.message);
+                if (error.code === '42P01') { // Undefined table
+                    this.updateStatus(false, 'Table Missing');
+                    if (!silent) showNotification('Connected, but backup table is missing. Run SQL script.', 'warning');
+                    return false;
+                }
+                throw error;
+            }
 
             this.isConnected = true;
             this.updateStatus(true, 'Connected');
@@ -40,7 +51,7 @@ const SupabaseBackup = {
             console.error('☁️ Connection test failed:', err);
             this.isConnected = false;
             this.updateStatus(false, 'Disconnected');
-            if (!silent) showNotification('Cloud connection failed. Check console.', 'error');
+            if (!silent) showNotification('Cloud connection failed. ' + err.message, 'error');
             return false;
         }
     },

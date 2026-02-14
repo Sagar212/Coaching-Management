@@ -77,106 +77,147 @@ function loadStudentReport() {
     const autoSignEl = document.getElementById('autoSign');
     const autoSign = autoSignEl ? autoSignEl.checked : true;
 
-    const html = `
-        <div class="report-card" style="background: white; padding: 20px; width: 210mm; min-height: 297mm; margin: 0 auto; color: #333; font-family: 'Inter', sans-serif; position: relative; box-sizing: border-box; border: 1px solid #eee;">
-            <div style="text-align: center; border-bottom: 2px solid var(--primary); padding-bottom: 15px; margin-bottom: 25px;">
-                <h1 style="color: var(--primary); margin: 0; font-size: 28px; letter-spacing: 1px;">${db.getData().settings.name || 'Coaching Institute'}</h1>
-                <div style="color: #666; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; margin-top: 5px;">Student Progress Report</div>
-            </div>
+    // Generate Report HTML with premium A4 structure
+    const settings = db.getData().settings || {};
+    const attendancePct = attendancePercentage; // Using the calculated attendance percentage
+    const pendingFee = totalFees - paidFees; // Using the calculated fee balance
 
-            <div style="display: flex; justify-content: space-between; margin-bottom: 25px; background: #f8fafc; padding: 15px; border-radius: 8px;">
-                <div>
-                    <div style="font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Student Information</div>
-                    <div style="font-weight: 700; font-size: 18px; color: #1e293b;">${student.name}</div>
-                    <div style="font-size: 13px; color: #475569;">
-                        <span><strong>Roll No:</strong> ${student.rollNumber || student.student_code || 'N/A'}</span>
-                        <span style="margin-left: 20px;"><strong>Batch:</strong> ${student.batches ? student.batches.join(', ') : (student.batch || 'N/A')}</span>
-                    </div>
+    // Prepare exam data for the new structure
+    const examData = examResults.map(r => ({
+        examName: r.examName,
+        marks: r.obtainedMarks,
+        total: r.totalMarks,
+        passing: r.totalMarks * 0.33 // Assuming a 33% passing mark for example
+    }));
+
+    const totalClasses = totalConducted;
+    const presentDays = daysPresent;
+    const absentDays = daysAbsent;
+
+    const reportHtml = `
+        <div class="report-container" id="reportContent" style="width: 210mm; min-height: 297mm; padding: 20mm; margin: auto; background: white; box-shadow: none; color: #333; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; position: relative; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 30px;">
+                <div style="flex: 1;">
+                    <h1 style="color: var(--primary); margin: 0; font-size: 28px;">${settings.name || 'Coaching Center'}</h1>
+                    <p style="margin: 5px 0; font-size: 14px; color: #666;">${settings.address || ''}</p>
+                    <p style="margin: 5px 0; font-size: 14px; color: #666;">Ph: ${settings.phone || ''} | Email: ${settings.email || ''}</p>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Session Details</div>
-                    <div style="font-weight: 600; color: #1e293b;">Academic Session 2026</div>
-                    <div style="font-size: 13px; color: #475569;">Date: ${new Date().toLocaleDateString()}</div>
+                    <div style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold; display: inline-block;">
+                        PROGRESS REPORT
+                    </div>
+                    <p style="margin-top: 10px; font-size: 14px; font-weight: 600;">Date: ${new Date().toLocaleDateString()}</p>
                 </div>
             </div>
 
-            <h3 style="color: var(--primary); border-left: 4px solid var(--primary); padding-left: 10px; margin-bottom: 15px; font-size: 16px;">Academic Performance</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-                <thead>
-                    <tr style="background: var(--primary); color: white;">
-                        <th style="padding: 12px; text-align: left; font-size: 13px;">Subject / Examination</th>
-                        <th style="padding: 12px; text-align: center; font-size: 13px;">Obtained</th>
-                        <th style="padding: 12px; text-align: center; font-size: 13px;">Total</th>
-                        <th style="padding: 12px; text-align: right; font-size: 13px;">Percentage</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${examResults.length ? examResults.map(r => `
+            <!-- Student Profile -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; background: #f8fafc; padding: 20px; border-radius: 10px;">
+                <div>
+                    <h3 style="margin: 0 0 15px; color: var(--primary); border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; font-size: 16px;">Student Information</h3>
+                    <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+                        <tr><td style="padding: 5px 0; font-weight: 600; width: 120px;">Name:</td><td>${student.name}</td></tr>
+                        <tr><td style="padding: 5px 0; font-weight: 600;">Roll Number:</td><td>${student.rollNumber || '-'}</td></tr>
+                        <tr><td style="padding: 5px 0; font-weight: 600;">Batch:</td><td>${student.batches?.join(', ') || student.batch || '-'}</td></tr>
+                    </table>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 15px; color: var(--primary); border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; font-size: 16px;">Academic Summary</h3>
+                    <div style="display: flex; gap: 15px;">
+                        <div style="flex: 1; text-align: center; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Attendance</div>
+                            <div style="font-size: 18px; font-weight: 700; color: ${attendancePct < 75 ? 'var(--danger)' : 'var(--success)'}">${attendancePct}%</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Fee Status</div>
+                            <div style="font-size: 18px; font-weight: 700; color: ${pendingFee > 0 ? '#f59e0b' : '#10b981'}">${pendingFee > 0 ? 'Due' : 'Paid'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Performance -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="color: var(--primary); margin-bottom: 15px; border-left: 4px solid var(--primary); padding-left: 10px; font-size: 16px;">Academic Performance</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; border: 1px solid #e2e8f0;">
+                    <thead style="background: #f1f5f9;">
                         <tr>
-                            <td style="padding: 12px; border-bottom: 1px solid #edf2f7;">
-                                <div style="font-weight: 600; color: #1e293b;">${r.examName}</div>
-                                <div style="font-size: 12px; color: #64748b;">${r.subject}</div>
-                            </td>
-                            <td style="padding: 12px; text-align: center; border-bottom: 1px solid #edf2f7; color: #1e293b;">${r.obtainedMarks}</td>
-                            <td style="padding: 12px; text-align: center; border-bottom: 1px solid #edf2f7; color: #1e293b;">${r.totalMarks}</td>
-                            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #edf2f7; font-weight: 700; color: var(--primary);">${r.percentage}%</td>
+                            <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Exam Name</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #e2e8f0;">Marks</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #e2e8f0;">Percentage</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #e2e8f0;">Result</th>
                         </tr>
-                    `).join('') : '<tr><td colspan="4" style="padding: 30px; text-align: center; color: #94a3b8;">No academic records found for this period.</td></tr>'}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        ${examData.length ? examData.map(ex => `
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0;">${ex.examName}</td>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;">${ex.marks}/${ex.total}</td>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;">${((ex.marks / ex.total) * 100).toFixed(1)}%</td>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;">
+                                    <span style="color: ${ex.marks >= ex.passing ? '#10b981' : '#ef4444'}; font-weight: 600;">${ex.marks >= ex.passing ? 'Pass' : 'Fail'}</span>
+                                </td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="4" style="padding: 30px; text-align: center; color: #94a3b8;">No academic records found for this period.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+            <!-- Financial & Attendance -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
                 <div style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px;">
-                    <div style="font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">Attendance Summary</div>
-                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                        <div>
-                            <span style="font-size: 24px; font-weight: 800; color: var(--success);">${daysPresent}</span>
-                            <span style="font-size: 12px; color: #64748b;"> Present</span>
-                        </div>
-                        <div>
-                            <span style="font-size: 24px; font-weight: 800; color: var(--danger);">${daysAbsent}</span>
-                            <span style="font-size: 12px; color: #64748b;"> Absent</span>
-                        </div>
+                    <div style="font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 10px; font-weight: 600;">Attendance Detail</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;">
+                        <span>Total Conducted:</span>
+                        <span style="font-weight: 600;">${totalClasses} Days</span>
                     </div>
-                    <div style="margin-top: 10px; font-size: 12px; color: #475569;">
-                        Total Conduction: <strong>${totalConducted} Days</strong> | Record: <strong>${attendancePercentage}%</strong>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;">
+                        <span>Days Present:</span>
+                        <span style="font-weight: 600; color: #10b981;">${presentDays}</span>
                     </div>
-                    <div style="margin-top: 10px; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
-                         <div style="width: ${attendancePercentage}%; height: 100%; background: ${attendancePercentage < 75 ? 'var(--danger)' : 'var(--success)'};"></div>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                        <span>Days Absent:</span>
+                        <span style="font-weight: 600; color: #ef4444;">${absentDays}</span>
                     </div>
                 </div>
                 <div style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px;">
-                    <div style="font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">Financial Summary</div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="font-size: 13px; color: #475569;">Fee Paid:</span>
-                        <span style="font-weight: 700; color: #059669;">₹${paidFees}</span>
+                    <div style="font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 10px; font-weight: 600;">Financial Summary</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;">
+                        <span>Total Fees:</span>
+                        <span style="font-weight: 600;">₹${totalFees}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="font-size: 13px; color: #475569;">Balance Pending:</span>
-                        <span style="font-weight: 700; color: #dc2626;">₹${totalFees - paidFees}</span>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;">
+                        <span>Paid Amount:</span>
+                        <span style="font-weight: 600; color: #10b981;">₹${paidFees}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                        <span>Balance Due:</span>
+                        <span style="font-weight: 600; color: ${pendingFee > 0 ? '#ef4444' : '#10b981'};">₹${pendingFee}</span>
                     </div>
                 </div>
             </div>
 
-            <div style="background: #fdf2f2; border: 1px solid #fee2e2; padding: 15px; border-radius: 10px; margin-bottom: 40px;">
-                <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #991b1b; text-transform: uppercase;">Teacher's Comprehensive Remarks</h4>
-                <p style="margin: 0; font-style: italic; color: #450a0a; line-height: 1.5; font-size: 14px;">"${remarks}"</p>
+            <!-- Remarks -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; margin-bottom: 40px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--primary); text-transform: uppercase;">Teacher's Remarks</h4>
+                <p style="margin: 0; font-style: italic; color: #334155; line-height: 1.6; font-size: 14px;">"${remarks}"</p>
             </div>
 
-            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding: 40px 20px 20px 20px;">
+            <!-- Signatures -->
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 20px;">
                 <div style="text-align: center;">
                     <div style="height: 1px; width: 150px; background: #cbd5e1; margin-bottom: 8px;"></div>
                     <div style="font-size: 13px; font-weight: 600; color: #1e293b;">Class Teacher</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="font-family: 'Dancing Script', cursive; font-size: 24px; color: var(--primary); margin-bottom: 0px; font-weight: 700;">Sudhesh</div>
+                    <div style="font-family: 'Dancing Script', cursive; font-size: 24px; color: var(--primary); margin-bottom: -5px; font-weight: 700;">${settings.director || 'Principal'}</div>
                     <div style="height: 1px; width: 180px; background: #cbd5e1; margin-bottom: 8px;"></div>
                     <div style="font-size: 13px; font-weight: 600; color: #1e293b;">Director / Principal</div>
                 </div>
             </div>
             
-            <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10px; color: #94a3b8;">
-                Academic Session 2026 | Computer Generated Document | Page 1 of 1
+            <div style="text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+                Academic Session 2026 | Computer Generated Document | Verified by ${settings.name || 'Admin'}
             </div>
         </div>
         
@@ -186,11 +227,11 @@ function loadStudentReport() {
         </div>
     `;
 
-    document.getElementById('reportPreview').innerHTML = html;
+    document.getElementById('reportPreview').innerHTML = reportHtml;
 }
 
 function printReport() {
-    const element = document.querySelector('.report-card');
+    const element = document.getElementById('reportContent');
     if (!element) return;
 
     const studentName = document.getElementById('reportStudentSelect').options[document.getElementById('reportStudentSelect').selectedIndex].text;

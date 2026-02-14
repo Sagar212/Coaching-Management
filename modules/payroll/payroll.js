@@ -16,25 +16,48 @@ function openPayrollModal() {
 
 function loadTeacherSalaryInfo() {
     const teacherId = document.getElementById('payrollTeacher').value;
+    if (!teacherId) return;
+
     const teacher = db.getRecords('tutors').find(t => t.id === teacherId);
-    if (teacher && teacher.salary) {
-        document.getElementById('payrollBaseSalary').value = teacher.salary;
+    if (teacher) {
+        document.getElementById('payrollBaseSalary').value = teacher.salary || 0;
+        // Default classes taken - can be calculated from attendance if available
+        document.getElementById('payrollClassesTaken').value = 20;
         calculatePayrollTotal();
     }
 }
 
 function calculatePayrollTotal() {
     const base = parseFloat(document.getElementById('payrollBaseSalary').value) || 0;
+    const classes = parseInt(document.getElementById('payrollClassesTaken').value) || 0;
     const bonus = parseFloat(document.getElementById('payrollBonus').value) || 0;
     const deductions = parseFloat(document.getElementById('payrollDeductions').value) || 0;
-    const total = base + bonus - deductions;
-    document.getElementById('payrollTotalAmount').value = total.toFixed(2);
+
+    const teacher = db.getRecords('tutors').find(t => t.id === document.getElementById('payrollTeacher').value);
+    let total = base;
+
+    if (teacher && teacher.salaryType === 'per_class') {
+        total = base * classes;
+    }
+
+    const finalAmount = total + bonus - deductions;
+    document.getElementById('payrollTotalAmount').value = finalAmount.toFixed(2);
 }
 
 function savePayroll(e) {
     if (e) e.preventDefault();
+
+    const teacherId = document.getElementById('payrollTeacher').value;
+    const amount = parseFloat(document.getElementById('payrollTotalAmount').value);
+
+    if (!teacherId || isNaN(amount)) {
+        showNotification('Please fill all required fields correctly', 'error');
+        return;
+    }
+
     const payrollData = {
-        teacherId: document.getElementById('payrollTeacher').value,
+        teacherId: teacherId,
+        teacherName: document.getElementById('payrollTeacher').options[document.getElementById('payrollTeacher').selectedIndex].text,
         month: document.getElementById('payrollMonth').value,
         baseSalary: parseFloat(document.getElementById('payrollBaseSalary').value),
         classesTaken: parseInt(document.getElementById('payrollClassesTaken').value) || 0,
