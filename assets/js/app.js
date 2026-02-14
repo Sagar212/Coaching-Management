@@ -1,6 +1,6 @@
 
 // Initialize Global Instances
-const db = new DataManager();
+const db = new DataManager(); // REVERTED: Using localStorage-only manager to fix reload loop
 const tuitionManager = new TuitionManager(db);
 
 // Expose to window for inline HTML access (if any)
@@ -118,8 +118,31 @@ function changeTheme(theme) {
         }
     });
 
+    // Close dropdown after selection
+    const dropdown = document.getElementById('themeDropdown');
+    if (dropdown) {
+        dropdown.classList.remove('active');
+    }
+
     showNotification(`Theme changed to ${theme}`, 'info');
 }
+
+// Toggle theme dropdown
+function toggleThemeDropdown() {
+    console.log('toggleThemeDropdown called');
+    const dropdown = document.getElementById('themeDropdown');
+    console.log('Dropdown element:', dropdown);
+    if (dropdown) {
+        dropdown.classList.toggle('active');
+        console.log('Dropdown classes after toggle:', dropdown.className);
+    } else {
+        console.error('Theme dropdown element not found!');
+    }
+}
+
+// Expose theme functions to window for inline HTML access
+window.changeTheme = changeTheme;
+window.toggleThemeDropdown = toggleThemeDropdown;
 
 // Helper: Populate Batch Dropdown (used by exams, communications)
 function populateBatchDropdown(elementId) {
@@ -335,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target.classList.contains('modal')) {
             closeModal(event.target.id);
         }
-        if (!event.target.matches('.theme-btn') && !event.target.closest('.theme-dropdown')) {
+        if (!event.target.matches('.theme-toggle') && !event.target.closest('.theme-selector')) {
             const dropdown = document.getElementById('themeDropdown');
             if (dropdown && dropdown.classList.contains('active')) {
                 dropdown.classList.remove('active');
@@ -348,6 +371,20 @@ document.addEventListener('DOMContentLoaded', () => {
         SupabaseBackup.init();
         setTimeout(() => SupabaseBackup.autoLoadFromCloud(), 1000);
     }
+
+    // Initial sync from Supabase to local cache
+    // DISABLED: Reverted to DataManager
+    /*
+    if (db && db.syncFromCloud) {
+        console.log('🔄 Starting initial cloud sync...');
+        db.syncFromCloud().then(() => {
+            console.log('✅ Initial cloud sync complete');
+            // Data is now synced - UI will update on next user interaction
+        }).catch(err => {
+            console.error('❌ Initial sync failed:', err);
+        });
+    }
+    */
 
     console.log('✅ Coaching Management System Initialized (Modular)');
 });

@@ -54,14 +54,13 @@ const SupabaseBackup = {
                 this.lastError = errorMsg + '\n\nCheck: Is the CDN script loaded? Check browser console.';
                 this.updateStatus(false, 'Lib Error');
 
-                // Show alert for debugging
-                alert('❌ Supabase Init Failed:\n\n' + this.lastError + '\n\nwindow.supabase = ' + (window.supabase ? 'exists' : 'undefined'));
+                // Error logged to console
             }
         } catch (err) {
             console.error('☁️ Supabase init error:', err);
             this.lastError = 'Init Exception: ' + err.message;
             this.updateStatus(false, 'Init Error');
-            alert('❌ Supabase Init Exception:\n\n' + err.message + '\n\nStack:\n' + err.stack);
+            // Error logged to console
         }
     },
 
@@ -69,7 +68,7 @@ const SupabaseBackup = {
         if (!this.client) {
             const msg = this.lastError || 'Cloud client not initialized.';
             if (!silent) {
-                alert('❌ Cloud Test Failed:\n\n' + msg + '\n\nCheck console for details.');
+                // Error shown via notification
                 showNotification(msg, 'error');
             }
             return false;
@@ -85,7 +84,7 @@ const SupabaseBackup = {
                 if (error.code === '42P01') { // Undefined table
                     this.updateStatus(false, 'Table Missing');
                     if (!silent) {
-                        alert('⚠️ Cloud Test Warning:\n\nTable Missing (Code: 42P01)\n\nThe backup table does not exist in Supabase.\nRun the SQL schema script.');
+                        // Warning shown via notification
                         showNotification('Connected, but backup table is missing. Run SQL script.', 'warning');
                     }
                     return false;
@@ -97,7 +96,7 @@ const SupabaseBackup = {
             this.updateStatus(true, 'Connected');
             this.lastError = null; // Clear error on success
             if (!silent) {
-                alert('✅ Cloud Connection Successful!\n\nSupabase is connected and ready.\nTable: ' + this.TABLE_NAME);
+                // Success shown via notification
                 showNotification('Cloud connection successful!', 'success');
             }
             return true;
@@ -107,7 +106,7 @@ const SupabaseBackup = {
             this.lastError = 'Connection Error: ' + err.message;
             this.updateStatus(false, 'Disconnected');
             if (!silent) {
-                alert('❌ Cloud Connection Failed:\n\n' + err.message + '\n\nFull error:\n' + JSON.stringify(err, null, 2));
+                // Error shown via notification
                 showNotification('Cloud connection failed. ' + err.message, 'error');
             }
             return false;

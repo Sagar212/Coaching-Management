@@ -4,6 +4,9 @@ class SupabaseDataManager {
         this.PROJECT_ID = 'coaching_management_pro';
         this.isInitialized = false;
         this.localCache = null; // For offline support
+        this.syncInProgress = {}; // Track ongoing syncs to prevent duplicates
+        this.lastSyncTime = {}; // Track last sync time for debouncing
+        this.SYNC_DEBOUNCE_MS = 30000; // Only sync once per 30 seconds per type
         this.initializeSupabase();
     }
 
@@ -292,11 +295,39 @@ class SupabaseDataManager {
         localStorage.setItem('tutionData', JSON.stringify(this.localCache));
     }
 
-    // Get records of a specific type
-    async getRecords(type) {
-        if (!this.isInitialized) {
-            return this.localCache[type] || [];
+    // Get records of a specific type (SYNCHRONOUS - returns cache immediately)
+    getRecords(type) {
+        // Return cached data immediately for backward compatibility
+        const cachedData = this.localCache[type] || [];
+
+        // Only trigger background sync if:
+        // 1. Supabase is initialized
+        // 2. Not already syncing this type
+        // 3. Haven't synced recently (debounce)
+        // DISABLED: Causing reload loops - only sync on write operations
+        /*
+        if (this.isInitialized && !this.syncInProgress[type]) {
+            const now = Date.now();
+            const lastSync = this.lastSyncTime[type] || 0;
+
+            if (now - lastSync > this.SYNC_DEBOUNCE_MS) {
+                this.syncRecordsInBackground(type);
+            }
         }
+        */
+
+        return cachedData;
+    }
+
+    // Background sync (non-blocking)
+    async syncRecordsInBackground(type) {
+        // Prevent duplicate syncs
+        if (this.syncInProgress[type]) {
+            return;
+        }
+
+        this.syncInProgress[type] = true;
+        this.lastSyncTime[type] = Date.now();
 
         try {
             const tableName = this.getTableName(type);
@@ -308,19 +339,20 @@ class SupabaseDataManager {
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error(`❌ Error fetching ${tableName}:`, error);
-                return this.localCache[type] || [];
+                console.error(`❌ Background sync failed for ${tableName}:`, error);
+                return;
             }
 
-            // Update local cache
+            // Update local cache silently
             if (!this.localCache[type]) this.localCache[type] = [];
             this.localCache[type] = data || [];
             localStorage.setItem('tutionData', JSON.stringify(this.localCache));
 
-            return data || [];
+            console.log(`🔄 Synced ${data?.length || 0} records from ${tableName}`);
         } catch (err) {
-            console.error('❌ getRecords error:', err);
-            return this.localCache[type] || [];
+            console.error(`❌ Background sync error for ${type}:`, err);
+        } finally {
+            this.syncInProgress[type] = false;
         }
     }
 

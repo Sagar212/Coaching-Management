@@ -1290,6 +1290,74 @@
                 transform: translateX(0);
             }
         }
+
+        /* Theme Selector Styles */
+        .theme-selector {
+            position: relative;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .theme-dropdown {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 30px var(--shadow);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .theme-dropdown.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .theme-tile {
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .theme-tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .theme-tile.active::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--primary);
+            font-size: 20px;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -3039,6 +3107,7 @@
     <!-- Core Modules -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="assets/js/data-manager.js"></script>
+    <script src="assets/js/supabase-data-manager.js"></script>
     <script src="assets/js/tuition-manager.js"></script>
     <script src="assets/js/backup-service.js"></script>
     <script src="assets/js/app.js"></script>
