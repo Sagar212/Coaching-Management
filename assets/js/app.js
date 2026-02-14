@@ -343,5 +343,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Initialize Cloud Backup
+    if (window.SupabaseBackup) {
+        SupabaseBackup.init();
+        setTimeout(() => SupabaseBackup.autoLoadFromCloud(), 1000);
+    }
+
     console.log('✅ Coaching Management System Initialized (Modular)');
 });

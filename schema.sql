@@ -213,6 +213,19 @@ CREATE TABLE IF NOT EXISTS teacher_payroll (
     UNIQUE(teacher_id, month)
 );
 
+-- Expenses Table
+CREATE TABLE IF NOT EXISTS expenses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id VARCHAR(100) NOT NULL,
+    category VARCHAR(100) NOT NULL, -- Salary, Utilities, Supplies, Rent, etc.
+    amount DECIMAL(10, 2) NOT NULL,
+    expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_mode VARCHAR(50) DEFAULT 'cash',
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =====================================================
 -- ENHANCED BACKUP TABLE
 -- =====================================================
@@ -415,6 +428,9 @@ CREATE TRIGGER update_teacher_payroll_updated_at BEFORE UPDATE ON teacher_payrol
 CREATE TRIGGER update_backups_updated_at BEFORE UPDATE ON backups
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================
@@ -430,6 +446,7 @@ ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parent_communications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teacher_payroll ENABLE ROW LEVEL SECURITY;
 ALTER TABLE backups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (example for students - repeat for other tables)
 CREATE POLICY students_project_isolation ON students
@@ -437,6 +454,9 @@ CREATE POLICY students_project_isolation ON students
 
 CREATE POLICY backups_project_isolation ON backups
     USING (project_name = current_setting('app.current_project_id', true));
+
+CREATE POLICY expenses_project_isolation ON expenses
+    USING (project_id = current_setting('app.current_project_id', true));
 
 -- =====================================================
 -- SAMPLE DATA INSERTION (OPTIONAL - FOR TESTING)

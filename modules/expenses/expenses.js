@@ -25,7 +25,10 @@ function loadExpenses() {
                             <td style="color: var(--danger); font-weight: 600;">₹${e.amount}</td>
                             <td>${e.mode}</td>
                             <td>
-                                <button class="btn btn-danger btn-small" onclick="deleteExpense('${e.id}')">Delete</button>
+                                <div class="row-actions">
+                                    <button class="btn btn-secondary btn-small" onclick="editExpense('${e.id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteExpense('${e.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+                                </div>
                             </td>
                         </tr>
                     `).join('')}
@@ -37,13 +40,39 @@ function loadExpenses() {
     }
 }
 
-function openExpenseModal() {
-    document.getElementById('expenseDate').valueAsDate = new Date();
+function openExpenseModal(id = null) {
+    const modal = document.getElementById('expenseModal');
+    const form = document.getElementById('expenseForm');
+
+    if (id) {
+        const expense = db.getRecords('expenses').find(e => e.id === id);
+        if (expense) {
+            document.getElementById('expenseCategory').value = expense.category;
+            document.getElementById('expenseAmount').value = expense.amount;
+            document.getElementById('expenseDate').value = expense.date;
+            document.getElementById('expenseMode').value = expense.mode;
+            document.getElementById('expenseDescription').value = expense.description || '';
+            modal.dataset.editId = id;
+            modal.querySelector('.modal-title').textContent = 'Edit Expense';
+        }
+    } else {
+        if (form) form.reset();
+        document.getElementById('expenseDate').valueAsDate = new Date();
+        delete modal.dataset.editId;
+        modal.querySelector('.modal-title').textContent = 'Add Expense';
+    }
     openModal('expenseModal');
+}
+
+function editExpense(id) {
+    openExpenseModal(id);
 }
 
 function saveExpense(e) {
     if (e) e.preventDefault();
+    const modal = document.getElementById('expenseModal');
+    const editId = modal?.dataset.editId;
+
     const expense = {
         category: document.getElementById('expenseCategory').value,
         amount: parseFloat(document.getElementById('expenseAmount').value),
@@ -51,18 +80,29 @@ function saveExpense(e) {
         mode: document.getElementById('expenseMode').value,
         description: document.getElementById('expenseDescription').value
     };
-    db.addRecord('expenses', expense);
-    showNotification('Expense recorded!');
+
+    if (editId) {
+        db.updateRecord('expenses', editId, expense);
+        showNotification('Expense updated successfully!');
+    } else {
+        db.addRecord('expenses', expense);
+        showNotification('Expense recorded!');
+    }
+
     closeModal('expenseModal');
     loadExpenses();
     if (typeof loadDashboard === 'function') loadDashboard();
 }
 
 function deleteExpense(id) {
-    if (confirm('Delete this expense?')) {
-        db.deleteRecord('expenses', id);
-        showNotification('Expense deleted!');
-        loadExpenses();
-        if (typeof loadDashboard === 'function') loadDashboard();
-    }
+    confirmAction({
+        title: 'Delete Expense?',
+        message: 'This will remove the expense record from history.',
+        onConfirm: () => {
+            db.deleteRecord('expenses', id);
+            showNotification('Expense deleted!');
+            loadExpenses();
+            if (typeof loadDashboard === 'function') loadDashboard();
+        }
+    });
 }

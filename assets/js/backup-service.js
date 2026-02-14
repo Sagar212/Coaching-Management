@@ -67,11 +67,19 @@ const SupabaseBackup = {
             data.cm_lastSaved = Date.now(); // Add sync timestamp
             db.saveData(data);
 
+            const jsonString = JSON.stringify(data);
             const payload = {
                 project_name: this.PROJECT_ID,
                 backup_data: data,
-                backup_size: JSON.stringify(data).length,
-                version: '2.0'
+                backup_size: jsonString.length,
+                version: '2.0',
+                compression_type: 'none',
+                checksum: btoa(jsonString.substring(0, 100)), // Simple checksum for DDL compliance
+                audit_trail: {
+                    user: db.getData().settings?.adminName || 'Admin',
+                    action: 'manual_backup',
+                    timestamp: new Date().toISOString()
+                }
             };
 
             const { error } = await this.client.from(this.TABLE_NAME).insert(payload);

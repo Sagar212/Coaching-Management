@@ -141,22 +141,20 @@ function loadStudentReport() {
                 <p style="margin: 0; font-style: italic; color: #450a0a; line-height: 1.5; font-size: 14px;">"${remarks}"</p>
             </div>
 
-            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 40px;">
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding: 40px 20px 20px 20px;">
                 <div style="text-align: center;">
-                    <div style="height: 1px; width: 180px; background: #cbd5e1; margin-bottom: 8px;"></div>
-                    <div style="font-size: 12px; color: #64748b;">Class Teacher</div>
+                    <div style="height: 1px; width: 150px; background: #cbd5e1; margin-bottom: 8px;"></div>
+                    <div style="font-size: 13px; font-weight: 600; color: #1e293b;">Class Teacher</div>
                 </div>
                 <div style="text-align: center;">
-                    ${autoSign ? `
-                        <div style="font-family: 'Dancing Script', cursive; font-size: 22px; color: var(--primary); margin-bottom: -5px;">${db.getData().settings.adminName || 'Admin'}</div>
-                    ` : '<div style="height: 30px;"></div>'}
+                    <div style="font-family: 'Dancing Script', cursive; font-size: 24px; color: var(--primary); margin-bottom: 0px; font-weight: 700;">Sudhesh</div>
                     <div style="height: 1px; width: 180px; background: #cbd5e1; margin-bottom: 8px;"></div>
-                    <div style="font-size: 12px; color: #64748b;">Director / Principal</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #1e293b;">Director / Principal</div>
                 </div>
             </div>
             
-            <div style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 10px;">
-                This is a computer-generated document. For ${db.getData().settings.name || 'Coaching Institute'}.
+            <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10px; color: #94a3b8;">
+                Academic Session 2026 | Computer Generated Document | Page 1 of 1
             </div>
         </div>
         
